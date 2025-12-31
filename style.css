@@ -1,0 +1,87 @@
+/* Color Palette: Black (#0a0a0a), Orange (#ff8c00), Purple (#8a2be2) */
+
+:root {
+    --bg: #0a0a0a;
+    --card-bg: #141414;
+    --orange: #ff8c00;
+    --purple: #8a2be2;
+    --text: #ffffff;
+    --text-muted: #a0a0a0;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+    line-height: 1.6;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem; }
+
+/* Navigation */
+.nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #222;
+}
+
+.logo { font-weight: 900; font-size: 1.5rem; letter-spacing: -1px; }
+.purple-text { color: var(--purple); }
+.orange-text { color: var(--orange); }
+
+.nav-links a {
+    color: var(--text);
+    text-decoration: none;
+    margin-left: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.orange-btn {
+    background: var(--orange);
+    color: black !important;
+    padding: 8px 18px;
+    border-radius: 5px;
+}
+
+/* Hero Section */
+.hero {
+    text-align: center;
+    padding: 6rem 1rem;
+    background: radial-gradient(circle at top right, #1a0b2e, #0a0a0a);
+}
+
+h1 { font-size: clamp(2.5rem, 6vw, 4rem); margin-bottom: 1rem; }
+.lead { color: var(--text-muted); font-size: 1.2rem; max-width: 700px; margin: 0 auto; }
+
+/* About Grid */
+.about-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 4rem; align-items: center; }
+
+.kicker { color: var(--purple); text-transform: uppercase; font-weight: 800; letter-spacing: 2px; font-size: 0.8rem; }
+
+.stat-box {
+    background: var(--card-bg);
+    border: 1px solid #222;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.stat { font-size: 1.5rem; font-weight: 800; margin-bottom: 1rem; }
+
+/* Footer Link Strategy */
+.footer { border-top: 1px solid #222; padding: 3rem 0; text-align: center; }
+.footer-link {
+    color: var(--orange);
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: 1px dotted var(--orange);
+}
+
+@media (max-width: 768px) {
+    .about-grid { grid-template-columns: 1fr; }
+}
