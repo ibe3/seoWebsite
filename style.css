@@ -142,3 +142,21 @@ h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); margin-bottom: 1rem; line-height: 1.
     .hero { padding: 5rem 1.25rem; }
     h1 { font-size: 2.8rem; }
 }
+
+.footer-main-link {
+    display: inline-block;
+    color: var(--orange);
+    font-weight: 800;
+    text-decoration: none;
+    border: 2px solid var(--orange);
+    padding: 12px 20px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.footer-main-link:hover {
+    background: var(--orange);
+    color: #000;
+    transform: translateY(-3px); /* Subtle lift effect */
+    box-shadow: 0 10px 20px rgba(255, 140, 0, 0.2);
+}
