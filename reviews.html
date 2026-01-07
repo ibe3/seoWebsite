@@ -48,6 +48,153 @@
         </a>
     </div>
 </section>
+
+<section id="dynamic-posts" style="margin-top: 4rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>Community <span class="purple-text">Feed</span></h2>
+        <button id="admin-post-btn" class="orange-btn" style="display:none;" onclick="openModal()">+ New Post</button>
+        <button id="login-btn" onclick="login()" style="font-size: 0.8rem; background: transparent; border: 1px solid #333; color: white; cursor: pointer; padding: 5px 10px;">Admin Login</button>
+    </div>
+
+    <div id="posts-container" class="footer-grid">
+        <p style="color: var(--text-muted);">Loading reviews...</p>
+    </div>
+</section>
+
+<div id="postModal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index: 1000; padding: 20px;">
+    <div class="stat-box" style="max-width: 600px; margin: 50px auto; background: #111;">
+        <h3>Submit New Review</h3>
+        <input type="text" id="postTitle" placeholder="Post Title" style="width:100%; padding:10px; margin: 10px 0; background: #222; border: 1px solid #444; color: white;">
+        <textarea id="postContent" placeholder="Post Content (HTML allowed)" style="width:100%; height: 150px; padding:10px; margin: 10px 0; background: #222; border: 1px solid #444; color: white;"></textarea>
+        <input type="text" id="postLink" placeholder="External Link (Optional)" style="width:100%; padding:10px; margin: 10px 0; background: #222; border: 1px solid #444; color: white;">
+        <button class="orange-btn" onclick="submitPost()">Publish to GAER</button>
+        <button onclick="closeModal()" style="background:none; color: gray; border:none; margin-left: 10px; cursor: pointer;">Cancel</button>
+    </div>
+</div>
+
+<script type="module">
+  // 1. Unified Imports from CDN
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+  // 2. Your Specific Configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDym6WyCR3hcmxm5VUfd8vnvF7zSoYw4WE",
+    authDomain: "gaengineeringreview.firebaseapp.com",
+    projectId: "gaengineeringreview",
+    storageBucket: "gaengineeringreview.firebasestorage.app",
+    messagingSenderId: "113810111162",
+    appId: "1:113810111162:web:b6e98869dca465b48ba083",
+    measurementId: "G-D7RNE9HS5W"
+  };
+
+  // 3. Initialize Services
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  const analytics = getAnalytics(app);
+  const provider = new GoogleAuthProvider();
+
+  // --- ADMIN & LOGIN LOGIC ---
+  window.login = () => {
+      signInWithPopup(auth, provider).catch(err => console.error("Login failed:", err));
+  };
+
+  onAuthStateChanged(auth, (user) => {
+      const adminBtn = document.getElementById('admin-post-btn');
+      const loginBtn = document.getElementById('login-btn');
+      
+      // REPLACE THIS EMAIL with your actual email address
+      if (user && user.email === "YOUR_ACTUAL_EMAIL@gmail.com") { 
+          adminBtn.style.display = "block";
+          loginBtn.innerText = "Admin: " + user.displayName;
+      } else if (user) {
+          loginBtn.innerText = user.displayName;
+      }
+  });
+
+  // --- POSTING LOGIC ---
+  window.openModal = () => document.getElementById('postModal').style.display = 'block';
+  window.closeModal = () => document.getElementById('postModal').style.display = 'none';
+
+  window.submitPost = async () => {
+      const title = document.getElementById('postTitle').value;
+      const content = document.getElementById('postContent').value;
+      const link = document.getElementById('postLink').value;
+
+      if(!title || !content) return alert("Title and Content are required.");
+
+      try {
+          await addDoc(collection(db, "posts"), {
+              title: title,
+              content: content,
+              link: link,
+              timestamp: serverTimestamp() // Better than local JS date
+          });
+          closeModal();
+          alert("Review Published Successfully!");
+      } catch (e) { console.error("Error adding post: ", e); }
+  };
+
+  // --- SHARING LOGIC ---
+  window.sharePost = (title, url) => {
+      if (navigator.share) {
+          navigator.share({ title: title, url: url });
+      } else {
+          navigator.clipboard.writeText(url);
+          alert("Link copied to clipboard!");
+      }
+  };
+
+  // --- COMMENT LOGIC ---
+  window.addComment = async (postId) => {
+      const commentInput = document.getElementById(`input-${postId}`);
+      if(!commentInput.value) return;
+      
+      await addDoc(collection(db, "posts", postId, "comments"), {
+          text: commentInput.value,
+          user: auth.currentUser ? auth.currentUser.displayName : "Anonymous Critic",
+          timestamp: serverTimestamp()
+      });
+      commentInput.value = "";
+  };
+
+  // --- FETCH & DISPLAY LOGIC (Includes Comments & Sharing) ---
+  const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+  onSnapshot(q, (snapshot) => {
+      const container = document.getElementById('posts-container');
+      container.innerHTML = ""; 
+      
+      snapshot.forEach((doc) => {
+          const post = doc.data();
+          const postId = doc.id;
+          const postUrl = window.location.href;
+
+          const postHtml = `
+              <div class="stat-box" style="margin-bottom: 20px;">
+                  <span class="kicker">Live Review</span>
+                  <h4>${post.title}</h4>
+                  <p style="font-size: 0.95rem; line-height: 1.6; margin: 15px 0;">${post.content}</p>
+                  
+                  <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                      <a href="${post.link || '#'}" target="_blank" class="orange-text" style="font-size: 0.85rem; font-weight: bold;">View Source →</a>
+                      <span onclick="sharePost('${post.title}', '${postUrl}')" style="cursor:pointer; font-size: 0.85rem; color: var(--purple);">Share</span>
+                  </div>
+
+                  <div style="border-top: 1px solid #333; padding-top: 15px;">
+                      <input type="text" id="input-${postId}" placeholder="Add a response..." style="width: 70%; background: #222; border: 1px solid #444; color: white; padding: 5px;">
+                      <button onclick="addComment('${postId}')" style="background: var(--purple); color: white; border: none; padding: 5px 10px; cursor: pointer;">Post</button>
+                  </div>
+              </div>
+          `;
+          container.innerHTML += postHtml;
+      });
+  });
+</script>
+
+        
 <section style="margin-top: 5rem;" id="archive">
     <h2 style="margin-bottom: 2rem;">From the <span class="purple-text">IBW Advisory Blog</span></h2>
     
