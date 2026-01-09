@@ -73,13 +73,10 @@
 </div>
 
 <script type="module">
-  // 1. Unified Imports from CDN
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
 
-  // 2. Your Specific Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyDym6WyCR3hcmxm5VUfd8vnvF7zSoYw4WE",
     authDomain: "gaengineeringreview.firebaseapp.com",
@@ -90,107 +87,80 @@
     measurementId: "G-D7RNE9HS5W"
   };
 
-  // 3. Initialize Services
+  // Initialize
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
-  const analytics = getAnalytics(app);
   const provider = new GoogleAuthProvider();
 
-  // --- ADMIN & LOGIN LOGIC ---
-  window.login = () => {
-      signInWithPopup(auth, provider).catch(err => console.error("Login failed:", err));
+  // --- ATTACH TO WINDOW (Crucial for onclick attributes) ---
+  window.login = async () => {
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error("Login Error:", err.code, err.message);
+      alert("Login failed: " + err.message);
+    }
   };
 
-  onAuthStateChanged(auth, (user) => {
-      const adminBtn = document.getElementById('admin-post-btn');
-      const loginBtn = document.getElementById('login-btn');
-      
-      // REPLACE THIS EMAIL with your actual email address
-      if (user && user.email === "ibeworksltd@gmail.com") { 
-          adminBtn.style.display = "block";
-          loginBtn.innerText = "Admin: " + user.displayName;
-      } else if (user) {
-          loginBtn.innerText = user.displayName;
-      }
-  });
-
-  // --- POSTING LOGIC ---
   window.openModal = () => document.getElementById('postModal').style.display = 'block';
   window.closeModal = () => document.getElementById('postModal').style.display = 'none';
 
   window.submitPost = async () => {
-      const title = document.getElementById('postTitle').value;
-      const content = document.getElementById('postContent').value;
-      const link = document.getElementById('postLink').value;
+    const title = document.getElementById('postTitle').value;
+    const content = document.getElementById('postContent').value;
+    const link = document.getElementById('postLink').value;
 
-      if(!title || !content) return alert("Title and Content are required.");
+    if (!auth.currentUser) return alert("You must be logged in.");
 
-      try {
-          await addDoc(collection(db, "posts"), {
-              title: title,
-              content: content,
-              link: link,
-              timestamp: serverTimestamp() // Better than local JS date
-          });
-          closeModal();
-          alert("Review Published Successfully!");
-      } catch (e) { console.error("Error adding post: ", e); }
-  };
-
-  // --- SHARING LOGIC ---
-  window.sharePost = (title, url) => {
-      if (navigator.share) {
-          navigator.share({ title: title, url: url });
-      } else {
-          navigator.clipboard.writeText(url);
-          alert("Link copied to clipboard!");
-      }
-  };
-
-  // --- COMMENT LOGIC ---
-  window.addComment = async (postId) => {
-      const commentInput = document.getElementById(`input-${postId}`);
-      if(!commentInput.value) return;
-      
-      await addDoc(collection(db, "posts", postId, "comments"), {
-          text: commentInput.value,
-          user: auth.currentUser ? auth.currentUser.displayName : "Anonymous Critic",
-          timestamp: serverTimestamp()
+    try {
+      await addDoc(collection(db, "posts"), {
+        title,
+        content,
+        link,
+        author: auth.currentUser.email,
+        timestamp: serverTimestamp()
       });
-      commentInput.value = "";
+      closeModal();
+      alert("Published!");
+    } catch (e) {
+      alert("Error: " + e.message);
+    }
   };
 
-  // --- FETCH & DISPLAY LOGIC (Includes Comments & Sharing) ---
+  // --- AUTH OBSERVER ---
+  onAuthStateChanged(auth, (user) => {
+    const adminBtn = document.getElementById('admin-post-btn');
+    const loginBtn = document.getElementById('login-btn');
+    
+    if (user) {
+      loginBtn.innerText = `Logged in: ${user.displayName}`;
+      // Check if user is the admin (YOUR EMAIL)
+      if (user.email === "ibeworksltd@gmail.com") {
+        adminBtn.style.display = "inline-block";
+      }
+    } else {
+      loginBtn.innerText = "Admin Login";
+      adminBtn.style.display = "none";
+    }
+  });
+
+  // --- DATA LISTENER ---
   const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
   onSnapshot(q, (snapshot) => {
-      const container = document.getElementById('posts-container');
-      container.innerHTML = ""; 
-      
-      snapshot.forEach((doc) => {
-          const post = doc.data();
-          const postId = doc.id;
-          const postUrl = window.location.href;
-
-          const postHtml = `
-              <div class="stat-box" style="margin-bottom: 20px;">
-                  <span class="kicker">Live Review</span>
-                  <h4>${post.title}</h4>
-                  <p style="font-size: 0.95rem; line-height: 1.6; margin: 15px 0;">${post.content}</p>
-                  
-                  <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                      <a href="${post.link || '#'}" target="_blank" class="orange-text" style="font-size: 0.85rem; font-weight: bold;">View Source →</a>
-                      <span onclick="sharePost('${post.title}', '${postUrl}')" style="cursor:pointer; font-size: 0.85rem; color: var(--purple);">Share</span>
-                  </div>
-
-                  <div style="border-top: 1px solid #333; padding-top: 15px;">
-                      <input type="text" id="input-${postId}" placeholder="Add a response..." style="width: 70%; background: #222; border: 1px solid #444; color: white; padding: 5px;">
-                      <button onclick="addComment('${postId}')" style="background: var(--purple); color: white; border: none; padding: 5px 10px; cursor: pointer;">Post</button>
-                  </div>
-              </div>
-          `;
-          container.innerHTML += postHtml;
-      });
+    const container = document.getElementById('posts-container');
+    container.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const post = doc.data();
+      container.innerHTML += `
+        <div class="stat-box">
+          <span class="kicker">Case Study</span>
+          <h4>${post.title}</h4>
+          <p style="color: #ccc; margin: 1rem 0;">${post.content}</p>
+          ${post.link ? `<a href="${post.link}" class="orange-text" target="_blank">View Technical Specs →</a>` : ''}
+        </div>
+      `;
+    });
   });
 </script>
 
